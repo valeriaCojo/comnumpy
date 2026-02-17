@@ -48,7 +48,7 @@ Fiber_length = 1000 # Km
 D_pmd = 0.1e-12 # ps/sqrt(km), for aggresive cases, choose 0.1
 t_dgd_k, rot_angle_k = build_pmd_segments(Fiber_length, D_pmd, seg)
 pmd_params = [t_dgd_k, rot_angle_k]
-pdl_params = 0.05 # segment-wise [1e-3]
+pdl_params = 0.15 # segment-wise [1e-3]
 
 
 # Convergence #
@@ -61,8 +61,8 @@ tx = Sequential( [
 
 channel = Sequential( [
             PDL_(pdl_params),
-            PMD_(t_dgd_k, Fs),
-            SOP_(T_symb=Ts, linewidth=pol_linewidth, segments=seg),
+            #PMD_(t_dgd_k, Fs),
+            #SOP_(T_symb=Ts, linewidth=pol_linewidth, segments=seg),
 
 ] )
 
@@ -122,18 +122,19 @@ chain = Sequential([
 ##### Monte Carlo: SER vs Δp_tot·T #######
 start = time()
 ser_vs_linewidth = []
-nr_repetitions = 9
+nr_repetitions = 5
 ser_list = []
 dp_tot_T_list = []
 genie = GenieAidedPolResolverInteger()
 
-linewidth_list = [28e1, 5*28e1, 28e2, 5*28e2, 28e3, 5*28e3, 28e4, 5*28e4, 28e5]
+linewidth_list = [28e1, 28e2, 5*28e2, 28e3, 5*28e3, 28e4, 5*28e4, 28e5]
 
 for pol_linewidth in linewidth_list:
     channel = Sequential( [
+                #PDL_(pdl_params),
+                #PMD_(t_dgd_k, Fs)
                 SOP_(T_symb=Ts, linewidth=pol_linewidth, segments=seg),
-                PDL_(pdl_params),
-                PMD_(t_dgd_k, Fs)
+
     ] )
     channel_params = [pol_linewidth, pmd_params, pdl_params]
     
@@ -185,7 +186,7 @@ for pol_linewidth in linewidth_list:
     print(f"Final → linewidth={pol_linewidth:.1e} Hz → dp·T={dp_tot_T:.2e} → Mean SER={ser_avg:.3e}\n")
 
 df = pd.DataFrame(ser_vs_linewidth)
-df.to_csv(f"src\\comnumpy\\optical\\pdm\\validation\\results\\SER_vs_dpTotT_seg{seg}_SNR{SNR}_{ chain["MCMA"].name}_S3_2.csv", index=False)
+df.to_csv(f"src\\comnumpy\\optical\\pdm\\validation\\results\\SER_vs_dpTotT_seg{seg}_SNR{SNR}_{ chain["MCMA"].name}_S1_1.csv", index=False)
 
 
 plt.figure(figsize=(7, 5))

@@ -502,8 +502,7 @@ class MCMA_SoftContinuation(Processor):
 
     alphabet: np.ndarray
     L: int
-    mu1: float
-    mu2: float
+    mu: float
     switch: int
     alpha: float = 0.1        # soft-decision weight
     sigma2: float = 0.5       # softness (≈ noise variance)
@@ -573,8 +572,8 @@ class MCMA_SoftContinuation(Processor):
             e2_sd = y2 - s2
 
             # --- Blend ---
-            e1 = self.alpha * e1_mcma + (1-self.alpha) * e1_sd
-            e2 = self.alpha * e2_mcma + (1-self.alpha) * e2_sd
+            e1 = self.alpha * e1_mcma + (1-self.alpha) * 10*e1_sd
+            e2 = self.alpha * e2_mcma + (1-self.alpha) * 10*e2_sd
 
         grad = np.zeros((4, self.L), dtype=complex)
         grad[0] = e1 * np.conj(x1)
@@ -593,8 +592,10 @@ class MCMA_SoftContinuation(Processor):
         self.h11, self.h12, self.h21, self.h22 = self.reset()
 
         for n in range(self.L + 1, N):
-            mu = self.mu1 if n < self.switch else self.mu2
-
+            # if n < self.os * 100_000:
+            #     mu = self.mu * 5
+            # else:
+            mu = self.mu
             input = X[:, n : n - self.L : -1]
             x1, x2 = input[0], input[1]
 
@@ -603,7 +604,7 @@ class MCMA_SoftContinuation(Processor):
             output = np.array([y1, y2])
 
             if (n % self.os) == 0:
-                use_soft = n <= self.switch
+                use_soft = n >= self.switch
                 grad = self.grad(input, output, use_soft=use_soft)
 
                 self.h11 -= mu * grad[0]
@@ -622,12 +623,6 @@ class MCMA_SoftContinuation(Processor):
     def __call__(self, X: np.ndarray) -> np.ndarray:
         return self.forward(X)
 
-
-from dataclasses import dataclass
-import numpy as np
-
-from dataclasses import dataclass
-import numpy as np
 
 @dataclass
 class GenieAidedPolResolverInteger:
