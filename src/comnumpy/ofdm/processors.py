@@ -376,6 +376,8 @@ class IFFTProcessor(Processor):
     def forward(self, X: np.ndarray) -> np.ndarray:
         if self.shift:
             X = ifftshift(X, axes=self.axis)
+
+        
         Y = ifft(X, norm=self.norm, axis=self.axis)
         return Y
 
@@ -443,6 +445,7 @@ class CarrierAllocator(Processor):
     carrier_type: np.ndarray
     pilots: Optional[np.ndarray] = None
     axis: int = 0
+    hermitian_sym: bool = False
     name: str = "carrier allocator"
 
     def __post_init__(self):
@@ -463,6 +466,9 @@ class CarrierAllocator(Processor):
         # Initialize vector
         self.index_data = (self.carrier_type == 1)
         self.index_pilots = (self.carrier_type == 2)
+         # Hermitian
+        if self.hermitian_sym:
+            self.index_conj = (self.carrier_type == -1)
 
     def set_carrier_type(self, carrier_type):
         self.carrier_type = carrier_type
@@ -491,6 +497,16 @@ class CarrierAllocator(Processor):
             slices[self.axis] = self.index_pilots
             Y[tuple(slices)] = self.pilots[:, np.newaxis]
 
+        # Hermitian symmetry
+        if self.hermitian_sym:
+
+            slices[self.axis] = self.index_data
+            data = Y[tuple(slices)]
+
+            conj_data = np.conjugate(data[::-1])
+
+            slices[self.axis] = self.index_conj
+            Y[tuple(slices)] = conj_data
         return Y
 
     def plot(self, shift=False):
@@ -498,7 +514,6 @@ class CarrierAllocator(Processor):
         Plot the carrier allocation
         """
         plot_carrier_allocation(self.carrier_type, shift=shift, title="Carrier Allocation")
-
 
 @dataclass
 class CarrierExtractor(Processor):

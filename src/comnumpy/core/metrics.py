@@ -277,7 +277,26 @@ def compute_evm(X_target, X_estimated, axis=None):
 
     return np.sqrt(num / den)
 
+def compute_mse(X_target, X_estimated):
+    r"""
+    Compute the Mean Squared Error (MSE) between the target and estimated signals.
 
+    Parameters
+    ----------
+    X_target : ndarray
+        The target signal array.
+    X_estimated : ndarray
+        The estimated signal array.
+
+    Returns
+    -------
+    float
+        The computed MSE value.
+    """
+    X_target = np.ravel(X_target)
+    X_estimated = np.ravel(X_estimated)
+    mse = np.mean((X_target-X_estimated)**2)
+    return mse
 
 def compute_effective_SNR(X_target, X_estimated, sigma2_s=1, unit="natural"):
     r"""

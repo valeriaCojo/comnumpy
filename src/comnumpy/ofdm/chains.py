@@ -119,3 +119,51 @@ class OFDMReceiver(Processor):
 
     def forward(self, X):
         return self.chain(X)
+
+@dataclass
+class PhaseNoise(Processor):
+    r"""
+    Wiener Phase Noise channel model.
+
+    The received signal is given by:
+
+    .. math::
+
+        y[n] = x[n] e^{j\phi[n]}
+
+    where the phase evolves as a Wiener process:
+
+    .. math::
+
+        \phi[n] = \phi[n-1] + \Delta \phi[n]
+
+    with:
+
+    .. math::
+
+        \Delta \phi[n] \sim \mathcal{N}(0, \sigma^2)
+
+    where:
+        - :math:`x[n]` is the transmitted signal
+        - :math:`y[n]` is the received signal
+        - :math:`\phi[n]` is the phase noise
+        - :math:`\sigma^2` is the variance of the phase increments
+    """
+
+    sigma2: float
+    name: str = "phase noise"
+
+    def forward(self, X: np.ndarray) -> np.ndarray:
+
+        N = X.shape[0]
+
+        # gaussian increments
+        noise = np.random.normal(0, np.sqrt(self.sigma2), N)
+
+        # Wiener process
+        phi = np.cumsum(noise)
+
+        # apply phase noise
+        Y = X * np.exp(1j * phi)
+
+        return Y

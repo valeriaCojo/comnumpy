@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.fft import fftshift
 
 
-def get_standard_carrier_allocation(config_name, os=1, custom=None, shift=False):
+def get_standard_carrier_allocation(config_name, os=1, custom=None, shift=False, hermitian_sym=False):
     """
     Allocate subcarriers based on a specified OFDM configuration.
 
@@ -87,18 +87,32 @@ def get_standard_carrier_allocation(config_name, os=1, custom=None, shift=False)
     end_index = start_index + N
 
     carrier_type[start_index:end_index] = 1
-    carrier_type[start_index + np.array(pilot_index)] = 2
+    if len(pilot_index) > 0:
+        carrier_type[start_index + np.array(pilot_index)] = 2
+    # carrier_type[start_index + np.array(pilot_index)] = 2
     carrier_type[start_index:start_index + N_nulled_left] = 0
     carrier_type[end_index - N_nulled_right:end_index] = 0
 
     middle = N // 2
     width = N_nulled_DC // 2
     carrier_type[start_index + middle - width: start_index + middle + width + 1] = 0
+   
+    if hermitian_sym:
+        bandw = carrier_type[start_index:end_index]
+        center = N // 2
+
+        for k in range(1, center):
+
+            if bandw[k] == 1:
+                mirror = N - k
+                bandw[mirror] = -1
+        carrier_type[start_index:end_index] = bandw
 
     if not shift:
         carrier_type = fftshift(carrier_type)
 
     return carrier_type
+
 
 
 def plot_carrier_allocation(carrier_type, color_list = ["b", "g", "r"], label_list = ["null", "data", "pilots"], shift=False, num=None, title="Carrier allocation"):
@@ -163,3 +177,5 @@ def plot_carrier_allocation(carrier_type, color_list = ["b", "g", "r"], label_li
     plt.ylabel("subcarrier type")
     plt.title(title)
     plt.legend()
+
+
