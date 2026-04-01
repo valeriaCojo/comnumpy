@@ -163,6 +163,8 @@ class PhaseNoise(Processor):
         # Wiener process
         phi = np.cumsum(noise)
 
+        # print(np.max(np.abs(phi)))
+
         # apply phase noise
         Y = X * np.exp(1j * phi)
 

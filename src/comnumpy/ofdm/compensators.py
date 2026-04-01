@@ -183,81 +183,53 @@ class PhaseDemodulator(Processor):
     """
 
     h: float = 1.0
+    unwrap: bool = False
     name: str = "phase_demodulator"
 
     def forward(self, X: np.ndarray) -> np.ndarray:
 
         phase = np.angle(X)
+        # if self.unwrap:
+        #     phase = np.unwrap(phase)
+        if self.unwrap:
+            if X.ndim == 2:
+                phase = np.unwrap(phase, axis=0)
+            else:
+                phase = np.unwrap(phase)
 
         Z = phase / (2 * np.pi * self.h)
 
         return Z
 
-class SubcarrierWeight(Processor):
+@dataclass
+class Weight(Processor):
+    a:np.ndarray
+    name: str = 'weight'
 
-    def __init__(self, gamma=0.02):
-        self.gamma = gamma
-        self.W = None
+    def forward(self, X:np.ndarray) -> np.ndarray:
+        a = np.asarray(self.a)
 
-    def forward(self, X):
+        if X.ndim == 1:
+            return a*X
+        elif X.ndim == 2:
+            return a[:, None]*X
+        else:
+            raise ValueError(f'Unsupported input shape for Weight:{X.shape}')
 
-        N = X.shape[0]
+@dataclass
+class Unweight(Processor):
+    a: np.ndarray
+    name: str = "unweight"
 
-        if self.W is None:
+    def forward(self, X: np.ndarray) -> np.ndarray:
+        a = np.asarray(self.a)
 
-            k = np.arange(N)
-            k = k - N//2
-            k = np.abs(k)
+        if np.any(a == 0):
+            raise ValueError("Weight vector contains zeros, cannot unweight.")
 
-            W = 1 / np.sqrt(1 + self.gamma * k**2)
-
-            # normalize average power
-            W = W / np.sqrt(np.mean(W**2))
-
-            self.W = W
-
-        return X * self.W[:, None]
-
-class SubcarrierWeight(Processor):
-
-    def __init__(self, sigma2, Nsc, os, h, OSNR):
-
-        self.sigma2 = sigma2
-        self.Nsc = Nsc
-        self.os = os
-        self.h = h
-        self.OSNR = OSNR
-        self.W = None
-
-
-    def forward(self, X):
-
-        N = X.shape[0]
-
-        if self.W is None:
-
-            # subcarrier index (distance from carrier)
-            k = np.arange(1, N+1)
-
-            term1 = (self.sigma2 * (self.Nsc*self.os)**2) / (2*np.pi**2 * k**2)
-            term2 = 1/(2*self.OSNR)
-
-            W = (1/(2*np.pi*self.h)) * np.sqrt(term1 + term2)
-
-            # normalize average power
-            W = W / np.sqrt(np.mean(W**2))
-
-            self.W = W
-
-        return X * self.W[:, None]
-class SubcarrierUnweight(Processor):
-
-    def __init__(self, weight_block):
-        self.weight_block = weight_block
-
-    def forward(self, X):
-
-        W = self.weight_block.W
-        return X / W[:, None]
-    
-
+        if X.ndim == 1:
+            return X / a
+        elif X.ndim == 2:
+            return X / a[:, None]
+        else:
+            raise ValueError(f"Unsupported input shape for Unweight: {X.shape}")

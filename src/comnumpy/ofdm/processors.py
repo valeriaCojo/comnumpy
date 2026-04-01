@@ -376,7 +376,6 @@ class IFFTProcessor(Processor):
     def forward(self, X: np.ndarray) -> np.ndarray:
         if self.shift:
             X = ifftshift(X, axes=self.axis)
-
         
         Y = ifft(X, norm=self.norm, axis=self.axis)
         return Y
