@@ -8,7 +8,7 @@ from comnumpy.core import Sequential, Recorder
 from comnumpy.core.generators import SymbolGenerator
 from comnumpy.core.mappers import SymbolMapper, SymbolDemapper
 from comnumpy.core.processors import Serial2Parallel, Parallel2Serial
-from comnumpy.core.channels import AWGN
+from comnumpy.core.channels import AWGN, LaserPhaseNoise, AWGNChannel
 from comnumpy.core.utils import get_alphabet
 from comnumpy.optical.devices import Laser
 from comnumpy.ofdm.chains import PhaseNoise
@@ -18,32 +18,36 @@ from comnumpy.core.metrics import compute_evm, compute_ser, compute_ber
 
 M = 16
 os = 2
-h = 0.3
+h = 0.1
 A = 1
 sigma_awgn2 = 5e-3
 sigma_phase2 = 5e-4
-
-# OSNR_dB = 20
-# OSNR_abs = 10**(OSNR_dB/10)
-# sigma_awgn2 = A**2 / (2 * OSNR_abs * os)
 
 L = 63
 N = 2*(L+1)*os
 l = np.arange(1, L+1)
 
-n_runs = 1000
+fs = 1e9
+linewidth = sigma_phase2 * fs / (2 * np.pi)
+OSNR_dB = -10 * np.log10(sigma_awgn2 / (1 * os))
+print(f"linewidth: {linewidth:.2f} Hz")
+print(f"OSNR_dB: {OSNR_dB:.2f} dB")
 
+# linewidth = 10_000
+laser_pn = LaserPhaseNoise(linewidth=linewidth, fs = fs)
+# sigma_phase2 = laser_pn.sigma2  
+
+n_runs = 1000
 alphabet = get_alphabet("QAM", M)
 
 vect = np.zeros(N)
 vect[1:L+1] = 1
 vect[N:N-L-1:-1] = -1
-
+print(vect)
 gamma_l = sigma_phase2 / (np.sin(np.pi*l/N)**2) + sigma_awgn2/(A**2)
 
 # uniform
 a_uniform = np.ones(L)
-# a_uniform = np.random.randn(len(l))
 a_uniform *= np.sqrt((N/2)/np.sum(a_uniform**2))
 print("weight uniform:", a_uniform)
 print("Power:", (2/N)*np.sum(a_uniform**2))
@@ -53,6 +57,7 @@ alpha_sum = (2/N)*np.sum(np.sqrt(gamma_l))
 a_sum = np.sqrt(np.sqrt(gamma_l)/alpha_sum)
 print("Power:", (2/N)*np.sum(a_sum**2))
 print("weight sum:",a_sum)
+
 # var-MSE
 alpha_var = (2/N)*np.sum(gamma_l)
 a_var = np.sqrt(gamma_l/alpha_var)
@@ -90,9 +95,10 @@ def run_chain(a):
     ])
 
     channel = Sequential([
-        PhaseNoise(sigma2=sigma_phase2),
-        # Laser(linewidth=100_000, theta0=None, fs=1e9),
-        AWGN(value=sigma_awgn2, unit='sigma2'),
+        # PhaseNoise(sigma2=sigma_phase2),
+        laser_pn,
+        # AWGN(value=sigma_awgn2, unit='sigma2'),
+        AWGNChannel(OSNR_dB=OSNR_dB, os=os),
     ])
 
     chain = Sequential([transmitter, channel, receiver])
@@ -184,6 +190,9 @@ plt.xlabel("real")
 plt.ylabel("imag")
 
 plt.show()
+
+
+
 
 
 
